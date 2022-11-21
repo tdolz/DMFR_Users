@@ -1,0 +1,214 @@
+---
+title: "lesson_DMFR_11-21-22"
+author: "tara"
+date: "11/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Set up ###
+
+## Load relevant packages ##
+```{r, warning=FALSE, echo=FALSE}
+library(tidyverse)
+```
+
+## Set working directory ##
+```{r}
+setwd("~/Documents/R-Github/DMFR_Users")
+```
+
+## Read in data
+```{r}
+tidepool_dat <- read.csv("data/tidepool_data.csv", header =TRUE)
+```
+
+**Inspect the data**
+```{r}
+
+```
+
+# **Core dplyr functions**
+select() #subsets/reorders columns
+filter() #subsets by row, works similarly to subset()
+arrange() #sorts by row
+mutate() #creates new column(s) based on formula(s)
+summarize() #aggregates data by group(s) based on formula(s)
+
+**Examples of how these functions are used:**
+# The first argument is always the dataframe.
+# NOTE: output below will print to the console, but it can be stored as per usual <-
+
+**select**
+```{r}
+
+```
+
+**filter**
+```{r}
+
+```
+
+**arrange** Sort one column by values of one or more other columns
+```{r}
+
+```
+
+**mutate**  
+#mutate is similar to tidepool_dat$newcolumnname <- some_vectorized_operation, but you can create multiple columns at once
+```{r}
+#Create new columns with mutate
+#new columns can be based on columns created in the same call (e.g. musselsx2 get used to make snailsplusmusselsx2)
+
+# notice how none of our changes are saved unless we assign the operation to a new object.
+
+## Mutate across
+
+## Mutate with ifelse ###
+## uses values of one column to create another column. 
+
+#that does not account for a situation where mussels = barnacles
+
+# nested ifelse
+
+#ifelse with And/or statements
+# let's say you had a species that only liked to forage on mussel beds at high tide
+# create a new column that categorizes different observations as good forage or not good forage. 
+
+```
+**find & replace with gsub** 
+```{r}
+# edit a column using mutate
+# gsub - a variant of grep, is like find replace and can be used 
+
+
+```
+
+**group and summarize data by column**
+summarize is similar to aggregate() but you can create multiple aggregated columns at once
+```{r}
+
+#this calculates these values for the whole dataset though, which is not real useful
+
+#to calculate based on particular a variable, you first need to specify 'grouping' variables
+
+#when you apply the same code to the grouped dataframe, you now get a value for each site
+
+#group by more than one variable at a time. 
+
+
+#Try to avoid creating new summary columns that have the same name as a previous column
+
+
+#summarize multiple columns at the same time with "summarize_at"
+
+
+#useful tip that isn't in the help files:
+#mutate also acts separately on grouped data, for example:
+#scale data across all sites
+
+#scale data within sites
+
+#confirm this using summarize
+
+
+```
+
+**piping**
+#The %>% operator in dplyr allows you to pass the output of a function as the 
+first argument (input dataframe) for the next function, e.g.
+**filter(tidepool_dat, Site=="A") is the same as tidepool_dat %>% filter(Site=="A")**
+It eliminates the need to store lots of intermediates when manipulating data.
+```{r}
+#For example, say you wanted to do the following series of steps.
+
+#Rather than storing 4 intermediate dataframes, you can string the operations together like so:
+
+#The output dataframe of the previous line become the input dataframe to the next line.
+
+#the backwards pipe! (to permanently modify the orginal dataframe, for two or more pipe chains)
+#save the original (for the purposes of this exercise)
+#
+ # observe output - low tide is back! because the original dataframe was not permanently modified. 
+
+# to permanently modify the original dataframe, we must assign it to a new object that has the same name.
+
+#return tidepool2 to the original by recreating it from tidepool_dat
+
+# OR if there are chains of more than one pipe, we can use the backwards pipe to permanently modify the original dataframe 
+
+
+```
+
+**unite, separate, rename**  
+to make new variables. 
+```{r}
+# unite
+
+# separate & rename (with backwards pipe!)
+
+
+```
+
+**join**
+joining tables (similar to merge())
+join functions are useful when working with relational tables/databases.
+```{r}
+## create an example dataset ###
+#filter the dataset to include sites A & C only. Then add a column called "df" which signifies the dataframe it belongs to.
+
+#filter the dataset to include sites B & C only. This time we're using %in%, but you could also use !="A" for the same result.Then add a column called "df" which signifies the dataframe it belongs to.
+
+#### LEFT JOIN ### - the dataframe on the left will overwrite the dataframe on the right.
+#if you don't supply a 'by' argument, it will join automatically based on matching column names.
+#it is possible to match by multiple columns, e.g. by=c("location","year")
+##if the columns you want to match don't have exactly the same name, specify e.g. by=c("location"="LOCATION")
+
+### RIGHT JOIN ### - the dataframe on the right will overwrite the dataframe on the left. 
+
+
+## FULL JOIN ### - neither dataframes will overight. columns that have duplicate rows will retain both. 
+
+
+```
+
+**pivot** 
+Convert between long format and wide format data frames. 
+These functions can also be piped with dplyr functions.
+```{r}
+
+
+####pivot_longer### 
+#  rather than have separate columns for mussels, snails, barnacles, we can put all the numeric values into a column called 'Adundance' and create a new categorical column called 'Species', which has levels mussels, snails, barnacles. This is a conversion to long format.
+
+
+
+####pivot_wider#####
+# let's change td_long back to wide format. 
+
+
+```
+dplyr/tidyr functions have a tendency to convert things to 'tibbles' without asking, which sometimes aren't compatible with other code you've written for data frames. To avoid this, I will end piped sequences with %>% as.data.frame()
+
+grouping also sometimes screws things up down the line, so it's often not a bad idea to %>% ungroup() after you group and perform operations.
+
+
+**working with factor levels** from the "forcats" package
+```{r}
+# relabel factors with fct_relabel
+# can be used standalone or within mutate. 
+# standalone
+
+# if the column you are trying to relabel is not of class factor, you must use quotes, or change it to a factor first.
+
+# change it back with mutate
+
+
+# combine factor levels with fct_collapse
+# combine sites B and C into one site. 
+
+
+```
