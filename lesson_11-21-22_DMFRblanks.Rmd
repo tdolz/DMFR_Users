@@ -23,12 +23,12 @@ setwd("~/Documents/R-Github/DMFR_Users")
 
 ## Read in data
 ```{r}
-tidepool_dat <- read.csv("data/tidepool_data.csv", header =TRUE)
+td <- read.csv("data/tidepool_data.csv", header =TRUE)
 ```
 
 **Inspect the data**
 ```{r}
-
+head(td)
 ```
 
 # **Core dplyr functions**
@@ -44,41 +44,56 @@ summarize() #aggregates data by group(s) based on formula(s)
 
 **select**
 ```{r}
-
+select(td, site, tide.height, mussels)
+select(td, -mussels)
+select(td, mussels:barnacles)
 ```
 
 **filter**
 ```{r}
+filter(td, site=="A")
 
+##AND##
+filter(td, site=="A" & tide.height=="low")
+filter(td, site=="A"| site=="B" & tide.height=="low") #(A, OR (B & low tide))
+filter(td, site=="A" & tide.height == "low" | site =="B" )
+
+# (A OR B) & low tide
+filter(td, tide.height=="low" & site %in% c("A","B"))
+filter(td, tide.height =="low" & !site %in% c("A", "B"))
+
+nope_sites <- c("A", "B")
+td_clean <-filter(td, !site %in% nope_sites)
 ```
 
 **arrange** Sort one column by values of one or more other columns
 ```{r}
-
+arrange(td, site, mussels) #arrange rows by site, then mussels
+arrange(td, site, desc(mussels))
 ```
 
 **mutate**  
-#mutate is similar to tidepool_dat$newcolumnname <- some_vectorized_operation, but you can create multiple columns at once
+#mutate is similar to td$newcolumnname <- some_vectorized_operation, but you can create multiple columns at once
 ```{r}
-#Create new columns with mutate
-#new columns can be based on columns created in the same call (e.g. musselsx2 get used to make snailsplusmusselsx2)
+mutate(td, musselsx2=mussels*2, logbarnacles=log(barnacles), snailsplusmusselsx2=snails+musselsx2)
+td2 <-mutate(td, musselsx2=mussels*2, logbarnacles=log(barnacles), snailsplusmusselsx2=snails+musselsx2)
 
-# notice how none of our changes are saved unless we assign the operation to a new object.
+mutate(td, across(4:6, ~.x*2))
 
-## Mutate across
+rapply(td, class)
+tide1 <-mutate(td, across(mussels:barnacles, as.character))
+rapply(tide1, class)
 
-## Mutate with ifelse ###
-## uses values of one column to create another column. 
+mutate(td, dominant_spp  = ifelse(mussels > barnacles, "mussels", "barnacles"))
 
-#that does not account for a situation where mussels = barnacles
+mutate(td, dominant_spp  = ifelse(mussels > barnacles, "mussels", ifelse(mussels==barnacles,"equal", "barnacles")))
 
-# nested ifelse
 
-#ifelse with And/or statements
-# let's say you had a species that only liked to forage on mussel beds at high tide
-# create a new column that categorizes different observations as good forage or not good forage. 
 
 ```
+
+
+
 **find & replace with gsub** 
 ```{r}
 # edit a column using mutate
@@ -128,18 +143,6 @@ It eliminates the need to store lots of intermediates when manipulating data.
 #Rather than storing 4 intermediate dataframes, you can string the operations together like so:
 
 #The output dataframe of the previous line become the input dataframe to the next line.
-
-#the backwards pipe! (to permanently modify the orginal dataframe, for two or more pipe chains)
-#save the original (for the purposes of this exercise)
-#
- # observe output - low tide is back! because the original dataframe was not permanently modified. 
-
-# to permanently modify the original dataframe, we must assign it to a new object that has the same name.
-
-#return tidepool2 to the original by recreating it from tidepool_dat
-
-# OR if there are chains of more than one pipe, we can use the backwards pipe to permanently modify the original dataframe 
-
 
 ```
 
