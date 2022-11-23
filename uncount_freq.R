@@ -22,20 +22,6 @@ df.long <-pivot_longer(df, names_to = "SexStage", values_to = "Freq", cols=MaleC
 #How do we convert frequency counts into one row per observation? This is a problem that is beyond pivot_longer
 #Fortunately, tidyverse has a function called uncount() that converts frequency data into one row per observation format.
 
-df.caseform <-uncount(df.long, Freq, .remove=F)
+
 df.caseform <-uncount(df.long, Freq)
 
-df.caseform <-df.long%>% group_by(Year, Location, TrawlIdentifier, SpeciesCode, SexStage)%>% summarize(obs=uncount(Freq),.groups="keep")
-
-##
-df.filt <- select(df, Length, Frequency)%>% uncount(Frequency, .remove=F)
-df.filt <- select(df, Length, Frequency)%>% uncount(Frequency)
-
-df.filt <-select(df.long, SexStage, Freq, Length)%>% uncount(Freq, .id="SexStage", .remove=F)
-df.filt <-select(df.long, SexStage, Freq, Length)%>% uncount(Length, .id="SexStage")
-
-df.filt <-select(df.long, SexStage, Freq, Length)%>% uncount(Freq, .id="Length")
-df.filt <-select(df.long, SexStage, Freq, Length)%>% uncount(Length, .id="Length")
-
-df <- uncount(freq_table, weights = n)
-df
