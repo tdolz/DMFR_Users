@@ -44,26 +44,25 @@ summarize() #aggregates data by group(s) based on formula(s)
 
 **select**
 ```{r}
-select(td, site, tide.height, mussels)
+
 select(td, -mussels)
 select(td, mussels:barnacles)
 ```
 
 **filter**
 ```{r}
-filter(td, site=="A")
-
-##AND##
-filter(td, site=="A" & tide.height=="low")
-filter(td, site=="A"| site=="B" & tide.height=="low") #(A, OR (B & low tide))
+filter(td, site=="A" | site=="B" & tide.height=="low") #(A, OR (B & low tide))
+#(A & low tide), OR B)
 filter(td, site=="A" & tide.height == "low" | site =="B" )
+filter(td, (site=="A" | site =="B") & tide.height == "low") # (A OR B) & low tide
 
-# (A OR B) & low tide
-filter(td, tide.height=="low" & site %in% c("A","B"))
-filter(td, tide.height =="low" & !site %in% c("A", "B"))
+# (A OR B) & low tide %in% 
+filter(td, tide.height=="low", site %in% c("A", "B"))
+# site C low tide
+filter(td, tide.height != "high" & !site %in% c("A","B"))
 
-nope_sites <- c("A", "B")
-td_clean <-filter(td, !site %in% nope_sites)
+nope_site <-c("A", "B")
+td_clean <- filter(td, !site %in% nope_sites) # create new "clean" dataset without the suspicious sites. 
 ```
 
 **arrange** Sort one column by values of one or more other columns
@@ -75,20 +74,19 @@ arrange(td, site, desc(mussels))
 **mutate**  
 #mutate is similar to td$newcolumnname <- some_vectorized_operation, but you can create multiple columns at once
 ```{r}
-mutate(td, musselsx2=mussels*2, logbarnacles=log(barnacles), snailsplusmusselsx2=snails+musselsx2)
-td2 <-mutate(td, musselsx2=mussels*2, logbarnacles=log(barnacles), snailsplusmusselsx2=snails+musselsx2)
+mutate(td, musselsx2=mussels*2, logbarnacles=log(barnacles), snailplusmusselsx2=snails+musselsx2)
 
 mutate(td, across(4:6, ~.x*2))
-
-rapply(td, class)
 tide1 <-mutate(td, across(mussels:barnacles, as.character))
-rapply(tide1, class)
 
-mutate(td, dominant_spp  = ifelse(mussels > barnacles, "mussels", "barnacles"))
+mutate(td, dominant_spp = ifelse(mussels > barnacles, "mussels","barnacles"))
 
-mutate(td, dominant_spp  = ifelse(mussels > barnacles, "mussels", ifelse(mussels==barnacles,"equal", "barnacles")))
+mutate(td, dominant_spp = ifelse(mussels > barnacles, "mussels",
+                                 ifelse(mussels==barnacles,"equal","barnacles")))
 
 
+
+mutate(td, forage_hab= ifelse(tide.height=="high" & mussels > barnacles, "good forage", "suboptimal forage"))
 
 ```
 
@@ -105,30 +103,23 @@ mutate(td, dominant_spp  = ifelse(mussels > barnacles, "mussels", ifelse(mussels
 **group and summarize data by column**
 summarize is similar to aggregate() but you can create multiple aggregated columns at once
 ```{r}
+summarize(td, mean=mean(mussels), n=n(), sd=sd(mussels), se=sd/sqrt(n))
 
-#this calculates these values for the whole dataset though, which is not real useful
+td.grouped <- group_by(td, site) #grouping here by site
+summarize(td.grouped, mean=mean(mussels), n=n(), sd=sd(mussels), se=sd/sqrt(n))
 
-#to calculate based on particular a variable, you first need to specify 'grouping' variables
+td.grouped2 <- group_by(td, site, tide.height)
+summarize(td.grouped2, mean=mean(mussels), n=n(), sd=sd(mussels), se=sd/sqrt(n))
 
-#when you apply the same code to the grouped dataframe, you now get a value for each site
+summarize(td.grouped2, mean=mean(mussels), n=n(), sd=sd(mussels), se=sd/sqrt(n), .groups="keep") #same grouping structure as the data
 
-#group by more than one variable at a time. 
-
-
-#Try to avoid creating new summary columns that have the same name as a previous column
-
-
-#summarize multiple columns at the same time with "summarize_at"
+summarize_at(td.grouped2, vars(mussels:barnacles), list(m=mean, sd=sd))
 
 
-#useful tip that isn't in the help files:
-#mutate also acts separately on grouped data, for example:
-#scale data across all sites
+mutate(td, mussels_scale=scale(mussels))
 
 #scale data within sites
-
-#confirm this using summarize
-
+mutate(td.grouped, mussels_scale=scale(mussels))
 
 ```
 
@@ -138,21 +129,34 @@ first argument (input dataframe) for the next function, e.g.
 **filter(tidepool_dat, Site=="A") is the same as tidepool_dat %>% filter(Site=="A")**
 It eliminates the need to store lots of intermediates when manipulating data.
 ```{r}
-#For example, say you wanted to do the following series of steps.
 
-#Rather than storing 4 intermediate dataframes, you can string the operations together like so:
+data.a <- group_by(td, site, tide.height)
+data.b <- summarize(data.a, mean=mean(mussels), n=n())
+data.c <- filter(data.b, tide.height=="high")
+data.d <- arrange(data.c, mean)
+data.d
 
-#The output dataframe of the previous line become the input dataframe to the next line.
+data2 <- td %>% 
+ group_by(site, tide.height)%>%
+  summarize(mean=mean(mussels), n=n()) %>%
+ filter(tide.height=="high") %>%
+ arrange(mean)
+ data2
 
 ```
+
+
 
 **unite, separate, rename**  
 to make new variables. 
 ```{r}
 # unite
+td2 <-td %>% unite("siterep", site, replicate, sep="_", remove=TRUE)
+
+
 
 # separate & rename (with backwards pipe!)
-
+td2 <-td2 %>% separate(siterep, into=c("site", "replicate"), remove=T) %>% rename(Site=site)
 
 ```
 
@@ -162,19 +166,21 @@ join functions are useful when working with relational tables/databases.
 ```{r}
 ## create an example dataset ###
 #filter the dataset to include sites A & C only. Then add a column called "df" which signifies the dataframe it belongs to.
+tidepool_AC <-filter(td, site !="B")%>%mutate(df="tidepool_AC")
 
-#filter the dataset to include sites B & C only. This time we're using %in%, but you could also use !="A" for the same result.Then add a column called "df" which signifies the dataframe it belongs to.
+#filter the dataset to include sites B & C only.
+tidepool_BC <-filter(td, site %in% c("B","C"))%>% mutate(df2 = "tidepool_BC")
 
 #### LEFT JOIN ### - the dataframe on the left will overwrite the dataframe on the right.
-#if you don't supply a 'by' argument, it will join automatically based on matching column names.
-#it is possible to match by multiple columns, e.g. by=c("location","year")
-##if the columns you want to match don't have exactly the same name, specify e.g. by=c("location"="LOCATION")
+tidepool2 <- left_join(tidepool_AC, tidepool_BC)
+
+tidepool2 <-left_join(tidepool_AC, tidepool_BC, by=c("site"))
 
 ### RIGHT JOIN ### - the dataframe on the right will overwrite the dataframe on the left. 
-
+tidepool2<-right_join(tidepool_AC, tidepool_BC)
 
 ## FULL JOIN ### - neither dataframes will overight. columns that have duplicate rows will retain both. 
-
+tidepool2<-full_join(tidepool_AC, tidepool_BC)
 
 ```
 
@@ -183,15 +189,21 @@ Convert between long format and wide format data frames.
 These functions can also be piped with dplyr functions.
 ```{r}
 
+td2
+
+
+
+
 
 ####pivot_longer### 
 #  rather than have separate columns for mussels, snails, barnacles, we can put all the numeric values into a column called 'Adundance' and create a new categorical column called 'Species', which has levels mussels, snails, barnacles. This is a conversion to long format.
+td_long <-pivot_longer(td, names_to="Species", values_to="Abundance", mussels:barnacles)%>%as.data.frame()
 
 
 
 ####pivot_wider#####
 # let's change td_long back to wide format. 
-
+td_wide <-pivot_wider(td_long, names_from="Species", values_from="Abundance")
 
 ```
 dplyr/tidyr functions have a tendency to convert things to 'tibbles' without asking, which sometimes aren't compatible with other code you've written for data frames. To avoid this, I will end piped sequences with %>% as.data.frame()
@@ -201,17 +213,12 @@ grouping also sometimes screws things up down the line, so it's often not a bad 
 
 **working with factor levels** from the "forcats" package
 ```{r}
-# relabel factors with fct_relabel
-# can be used standalone or within mutate. 
-# standalone
+td$site <-fct_recode(td$site, "1"="A", "2"="B", "3"="C")
 
-# if the column you are trying to relabel is not of class factor, you must use quotes, or change it to a factor first.
+td <-mutate(td, site=fct_recode(site, "A"="1", "B"="2", "C"="3"))
 
-# change it back with mutate
-
-
-# combine factor levels with fct_collapse
-# combine sites B and C into one site. 
+# combine sites B and C into one site called B
+tidepool2 <-mutate(td, site=fct_collapse(site, "B"=c("B","C")))
 
 
 ```
